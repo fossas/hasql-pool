@@ -120,7 +120,7 @@ use Pool{..} sess = do
     connectionPoolEmpty <- isEmptyTQueue poolConnectionQueue
     cap <- readTVar poolCapacity
     let logState :: String -> IO ()
-        logState msg = logger $ msg <> " - Connection pool empty: " <> show connectionPoolEmpty <> " - Available pool capcity: " <> show cap
+        logState msg = logger $ msg <> " - Connection pool empty: " <> show connectionPoolEmpty <> " - Available pool capacity: " <> show cap
     asum
       [ fmap (logState "Using existing connection" >>) $ readTQueue poolConnectionQueue <&> onConn reuseVar
       , fmap (logState "Attempting to create new connection" >>) do
