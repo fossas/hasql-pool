@@ -154,12 +154,15 @@ use Pool{..} sess = do
     case sessRes of
       Left err -> case err of
         Session.QueryError _ _ (Session.ClientError _) -> do
+          logger $ "QueryError: Increasing pool capacity - " <> displayException err
           atomically $ modifyTVar' poolCapacity succ
           return $ Left $ SessionUsageError err
         _ -> do
+          logger $ "Unknown error: Returning connection - " <> displayException err
           returnConn
           return $ Left $ SessionUsageError err
       Right res -> do
+        logger "Query completed successfully: Returning connection"
         returnConn
         return $ Right res
    where
@@ -167,10 +170,10 @@ use Pool{..} sess = do
       join . atomically $ do
         reuse <- readTVar reuseVar
         if reuse
-          then writeTQueue poolConnectionQueue conn $> return ()
+          then fmap (logger "Returning connection to pool" >>) $ writeTQueue poolConnectionQueue conn $> return ()
           else do
             modifyTVar' poolCapacity succ
-            return $ Connection.release conn
+            return $ fmap (logger "Releasing connection" >>) Connection.release conn
 
 -- | Union over all errors that 'use' can result in.
 data UsageError
