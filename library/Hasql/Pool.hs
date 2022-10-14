@@ -117,10 +117,10 @@ use Pool{..} sess = do
       return $ return False
   join . atomically $ do
     reuseVar <- readTVar poolReuse
-    existingConnectionAvailable <- isEmptyTQueue poolConnectionQueue
+    connectionPoolEmpty <- isEmptyTQueue poolConnectionQueue
     cap <- readTVar poolCapacity
     let logState :: String -> IO ()
-        logState msg = logger $ msg <> " - Existing connection available: " <> show existingConnectionAvailable <> " - Available pool capcity: " <> show cap
+        logState msg = logger $ msg <> " - Connection pool empty: " <> show connectionPoolEmpty <> " - Available pool capcity: " <> show cap
     asum
       [ fmap (logState "Using existing connection" >>) $ readTQueue poolConnectionQueue <&> onConn reuseVar
       , fmap (logState "Attempting to create new connection" >>) do
