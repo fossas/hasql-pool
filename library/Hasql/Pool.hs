@@ -167,7 +167,7 @@ use Pool{..} sess = do
           returnConn
           return $ Right res)
       (\(err :: SomeException ) -> do
-        logger $ "Exceptin: Returning capacity to pool - " <> displayException err
+        logger $ "Exception: Returning capacity to pool - " <> displayException err
         atomically $ modifyTVar' poolCapacity succ
         throw err)
    where
