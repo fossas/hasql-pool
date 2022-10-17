@@ -150,21 +150,26 @@ use Pool{..} sess = do
       modifyTVar' queryCount succ
       readTVar queryCount
     logger $ "Query count is: " <> show count
-    sessRes <- Session.run sess conn
-    case sessRes of
-      Left err -> case err of
-        Session.QueryError _ _ (Session.ClientError _) -> do
-          logger $ "QueryError: Increasing pool capacity - " <> displayException err
-          atomically $ modifyTVar' poolCapacity succ
-          return $ Left $ SessionUsageError err
-        _ -> do
-          logger $ "Unknown error: Returning connection - " <> displayException err
+    catch (do
+      sessRes <- Session.run sess conn
+      case sessRes of
+        Left err -> case err of
+          Session.QueryError _ _ (Session.ClientError _) -> do
+            logger $ "QueryError: Increasing pool capacity - " <> displayException err
+            atomically $ modifyTVar' poolCapacity succ
+            return $ Left $ SessionUsageError err
+          _ -> do
+            logger $ "Unknown error: Returning connection - " <> displayException err
+            returnConn
+            return $ Left $ SessionUsageError err
+        Right res -> do
+          logger "Query completed successfully: Returning connection"
           returnConn
-          return $ Left $ SessionUsageError err
-      Right res -> do
-        logger "Query completed successfully: Returning connection"
-        returnConn
-        return $ Right res
+          return $ Right res)
+      (\(err :: SomeException ) -> do
+        logger $ "Exceptin: Returning capacity to pool - " <> displayException err
+        atomically $ modifyTVar' poolCapacity succ
+        throw err)
    where
     returnConn =
       join . atomically $ do
